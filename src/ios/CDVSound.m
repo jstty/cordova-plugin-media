@@ -254,7 +254,9 @@ BOOL keepAvAudioSessionAlwaysActive = NO;
 
         if (![resourceUrl isFileURL] && ![resourcePath hasPrefix:CDVFILE_PREFIX]) {
             // First create an AVPlayerItem
-            AVPlayerItem* playerItem = [AVPlayerItem playerItemWithURL:resourceUrl];
+            // AVPlayerItem* playerItem = [AVPlayerItem playerItemWithURL:resourceUrl];
+            avAsset = [AVURLAsset assetWithURL: resourceUrl];
+            AVPlayerItem* playerItem = [AVPlayerItem playerItemWithAsset: avAsset];
 
             // Subscribe to the AVPlayerItem's DidPlayToEndTime notification.
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:playerItem];
@@ -264,7 +266,6 @@ BOOL keepAvAudioSessionAlwaysActive = NO;
 
             // Pass the AVPlayerItem to a new player
             avPlayer = [[AVPlayer alloc] initWithPlayerItem:playerItem];
-
             //avPlayer = [[AVPlayer alloc] initWithURL:resourceUrl];
         }
 
@@ -380,12 +381,14 @@ BOOL keepAvAudioSessionAlwaysActive = NO;
                 if (avPlayer.currentItem && avPlayer.currentItem.asset) {
                     CMTime time = avPlayer.currentItem.asset.duration;
                     duration = CMTimeGetSeconds(time);
+                    NSLog(@"startPlayingAudio duration: %f, avAsset.duration: %f", duration, CMTimeGetSeconds(avAsset.duration));
+
                     if (isnan(duration)) {
                         NSLog(@"Duration is infifnite, setting it to -1");
                         duration = -1;
                     }
 
-                    if (audioFile.rate != nil){
+                    if (audioFile.rate != nil) {
                         float customRate = [audioFile.rate floatValue];
                         NSLog(@"Playing stream with AVPlayer & custom rate");
                         [avPlayer setRate:customRate];
@@ -573,6 +576,9 @@ BOOL keepAvAudioSessionAlwaysActive = NO;
 
     } else if (avPlayer != nil) {
         int32_t timeScale = avPlayer.currentItem.asset.duration.timescale;
+        if(timeScale < 1) {
+            timeScale = 1000;
+        }
         CMTime timeToSeek = CMTimeMakeWithSeconds(posInSeconds, timeScale);
 
         BOOL isPlaying = (avPlayer.rate > 0 && !avPlayer.error);
